@@ -60,8 +60,28 @@ Stories live in `src/stories/*.stories.tsx`. Components live in `src/components/
 
 ## Publishing
 
-Publishing runs in CI (`.github/workflows/publish.yml`) whenever a GitHub Release is published, using the repo's built-in `GITHUB_TOKEN`. To publish:
+Publishing runs in CI (`.github/workflows/publish.yml`) whenever a GitHub Release is published, using the repo's built-in `GITHUB_TOKEN` (no manual `yarn npm publish` needed, and no extra secrets to configure — `packages: write` permission on the token is enough).
 
-1. Bump `version` in `package.json`.
-2. Cut a GitHub Release (tag it, e.g. `v0.2.0`).
-3. CI builds and runs `yarn npm publish` against `npm.pkg.github.com`.
+1. Bump `version` in `package.json` (semver):
+   ```bash
+   yarn version patch   # or: minor / major
+   ```
+2. Commit and push the version bump:
+   ```bash
+   git add package.json
+   git commit -m "chore: release v0.1.1"
+   git push
+   ```
+3. Cut a GitHub Release tagged to match the version (e.g. `v0.1.1`):
+   ```bash
+   gh release create v0.1.1 --title v0.1.1 --generate-notes
+   ```
+   (or via the GitHub UI: **Releases → Draft a new release**)
+4. On `release: published`, CI runs `typecheck → lint → build → yarn npm publish` against `npm.pkg.github.com`. Check the **Actions** tab for the run, then the repo's **Packages** tab for the published version.
+
+Local/manual publish (rarely needed — CI is the source of truth) requires a token with `write:packages` set as `GITHUB_TOKEN` in the shell, then:
+
+```bash
+yarn build
+yarn npm publish
+```

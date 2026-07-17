@@ -32,6 +32,30 @@ type CarouselContextProps = {
 
 const CarouselContext = React.createContext<CarouselContextProps | null>(null)
 
+function useCarouselScrollState(
+  api: CarouselApi,
+  getValue: (api: NonNullable<CarouselApi>) => boolean
+) {
+  const subscribe = React.useCallback(
+    (onStoreChange: () => void) => {
+      if (!api) return () => {}
+      api.on("select", onStoreChange)
+      api.on("reInit", onStoreChange)
+      return () => {
+        api.off("select", onStoreChange)
+        api.off("reInit", onStoreChange)
+      }
+    },
+    [api]
+  )
+  const getSnapshot = React.useCallback(
+    () => (api ? getValue(api) : false),
+    [api, getValue]
+  )
+
+  return React.useSyncExternalStore(subscribe, getSnapshot, () => false)
+}
+
 function useCarousel() {
   const context = React.useContext(CarouselContext)
 
@@ -58,14 +82,8 @@ function Carousel({
     },
     plugins
   )
-  const [canScrollPrev, setCanScrollPrev] = React.useState(false)
-  const [canScrollNext, setCanScrollNext] = React.useState(false)
-
-  const onSelect = React.useCallback((api: CarouselApi) => {
-    if (!api) return
-    setCanScrollPrev(api.canScrollPrev())
-    setCanScrollNext(api.canScrollNext())
-  }, [])
+  const canScrollPrev = useCarouselScrollState(api, (a) => a.canScrollPrev())
+  const canScrollNext = useCarouselScrollState(api, (a) => a.canScrollNext())
 
   const scrollPrev = React.useCallback(() => {
     api?.scrollPrev()
@@ -92,17 +110,6 @@ function Carousel({
     if (!api || !setApi) return
     setApi(api)
   }, [api, setApi])
-
-  React.useEffect(() => {
-    if (!api) return
-    onSelect(api)
-    api.on("reInit", onSelect)
-    api.on("select", onSelect)
-
-    return () => {
-      api?.off("select", onSelect)
-    }
-  }, [api, onSelect])
 
   return (
     <CarouselContext.Provider
